@@ -5,8 +5,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"go/ast"
-	"go/build"
 	"go/token"
 	"go/types"
 	"io"
@@ -14,7 +12,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"sort"
 	"strings"
 
@@ -24,7 +21,6 @@ import (
 const verbose = false
 
 var features map[string]bool
-var parsedFileCache = make(map[string]*ast.File)
 var internalPkg = regexp.MustCompile(`(^|/)internal($|/)`)
 var exitCode = 0
 
@@ -116,18 +112,6 @@ func main() {
 	}
 }
 
-func goCmd() string {
-	var exeSuffix string
-	if runtime.GOOS == "windows" {
-		exeSuffix = ".exe"
-	}
-	path := filepath.Join(runtime.GOROOT(), "bin", "go"+exeSuffix)
-	if _, err := os.Stat(path); err == nil {
-		return path
-	}
-	return "go"
-}
-
 func fileFeatures(filename string) []string {
 	bs, err := os.ReadFile(filename)
 	if errors.Is(err, os.ErrNotExist) {
@@ -169,8 +153,6 @@ func fileFeatures(filename string) []string {
 	return nonblank
 }
 
-var fset = token.NewFileSet()
-
 // export emits the exported package features.
 func export(pkg *types.Package) {
 	if verbose {
@@ -184,41 +166,6 @@ func export(pkg *types.Package) {
 		}
 	}
 	pop()
-}
-
-// tagKey returns the tag-based key to use in the pkgCache.
-// It is a comma-separated string; the first part is dir, the rest tags.
-// The satisfied tags are derived from context but only those that
-// matter (the ones listed in the tags argument plus GOOS and GOARCH) are used.
-// The tags list, which came from go/build's Package.AllTags,
-// is known to be sorted.
-func tagKey(dir string, context *build.Context, tags []string) string {
-	ctags := map[string]bool{
-		context.GOOS:   true,
-		context.GOARCH: true,
-	}
-	if context.CgoEnabled {
-		ctags["cgo"] = true
-	}
-	for _, tag := range context.BuildTags {
-		ctags[tag] = true
-	}
-	// TODO: ReleaseTags (need to load default)
-	key := dir
-
-	// explicit on GOOS and GOARCH as global cache will use "all" cached packages for
-	// an indirect imported package. See https://github.com/golang/go/issues/21181
-	// for more detail.
-	tags = append(tags, context.GOOS, context.GOARCH)
-	sort.Strings(tags)
-
-	for _, tag := range tags {
-		if ctags[tag] {
-			key += "," + tag
-			ctags[tag] = false
-		}
-	}
-	return key
 }
 
 func sortedMethodNames(typ *types.Interface) []string {
