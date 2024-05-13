@@ -7,12 +7,9 @@ import (
 	"fmt"
 	"go/ast"
 	"go/build"
-	"go/importer"
-	"go/parser"
 	"go/token"
 	"go/types"
 	"io"
-	"io/fs"
 	"log"
 	"os"
 	"path/filepath"
@@ -28,6 +25,8 @@ const verbose = false
 
 var features map[string]bool
 var parsedFileCache = make(map[string]*ast.File)
+var internalPkg = regexp.MustCompile(`(^|/)internal($|/)`)
+var exitCode = 0
 
 func init() {
 	features = make(map[string]bool)
@@ -43,7 +42,7 @@ func list() (fs []string) {
 
 func main() {
 	if len(os.Args) < 2 {
-		os.Args = append(os.Args, "/home/anomalroil/code/drand")
+		log.Fatal("please provide a path to a Go codebase as argument")
 	}
 	path := os.Args[1]
 	cfg := &packages.Config{
@@ -84,6 +83,37 @@ func main() {
 		fmt.Println(v)
 	}
 
+	bw := bufio.NewWriter(os.Stdout)
+	defer bw.Flush()
+
+	checkFiles, err := filepath.Glob(filepath.Join(path, "api/v*.txt"))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var nextFiles []string
+	next, err := filepath.Glob(filepath.Join(path, "api/next/*.txt"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	nextFiles = next
+
+	var required []string
+	for _, file := range checkFiles {
+		required = append(required, fileFeatures(file)...)
+	}
+	for _, file := range nextFiles {
+		required = append(required, fileFeatures(file)...)
+	}
+
+	exception := fileFeatures(filepath.Join(path, "api/except.txt"))
+
+	if exitCode == 1 {
+		log.Fatalf("API database problems found")
+	}
+	if !compareAPI(bw, list, required, exception) {
+		log.Fatalf("API differences found")
+	}
 }
 
 func goCmd() string {
@@ -96,170 +126,6 @@ func goCmd() string {
 		return path
 	}
 	return "go"
-}
-
-var internalPkg = regexp.MustCompile(`(^|/)internal($|/)`)
-var gitFiles = regexp.MustCompile(`(^|/).git($|/)`)
-
-var exitCode = 0
-
-// fitlerFiles will ignore test files and internal ones.
-func filterFiles(info fs.FileInfo) bool {
-	log.Println("filterFilesr", info)
-	if strings.HasSuffix(info.Name(), "_test.go") {
-		return false
-	}
-
-	return true
-}
-
-func callFuncs(pkgPath string) {
-	set := token.NewFileSet()
-	packs, err := parser.ParseDir(set, pkgPath, filterFiles, 0)
-	if err != nil {
-		log.Fatal("Failed to parse package:", err)
-	}
-
-	for _, pack := range packs {
-		ast.PackageExports(pack)
-		for _, f := range pack.Files {
-			for _, d := range f.Decls {
-				switch decl := d.(type) {
-				// Handle function declarations
-				case *ast.FuncDecl:
-					fmt.Printf("Function: (%s) %s\n", f.Name.Name, decl.Name)
-				// Handle general declarations (variables, constants, types)
-				case *ast.GenDecl:
-					// We're only interested in variable declarations here
-					if decl.Tok == token.VAR {
-						for _, spec := range decl.Specs {
-							if vs, ok := spec.(*ast.ValueSpec); ok {
-								for _, name := range vs.Names {
-									fmt.Printf("Variable: (%s) %s\n", f.Name.Name, name)
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-}
-
-// contexts are the default contexts which are scanned.
-var contexts = []*build.Context{
-	//	{GOOS: "linux", GOARCH: "386", CgoEnabled: true},
-	//	{GOOS: "linux", GOARCH: "386"},
-	//	{GOOS: "linux", GOARCH: "amd64", CgoEnabled: true},
-	{GOOS: "linux", GOARCH: "amd64"},
-	// {GOOS: "linux", GOARCH: "arm", CgoEnabled: true},
-	// {GOOS: "linux", GOARCH: "arm"},
-	// {GOOS: "darwin", GOARCH: "amd64", CgoEnabled: true},
-	// {GOOS: "darwin", GOARCH: "amd64"},
-	// {GOOS: "darwin", GOARCH: "arm64", CgoEnabled: true},
-	// {GOOS: "darwin", GOARCH: "arm64"},
-	// {GOOS: "windows", GOARCH: "amd64"},
-	// {GOOS: "windows", GOARCH: "386"},
-	// {GOOS: "freebsd", GOARCH: "386", CgoEnabled: true},
-	// {GOOS: "freebsd", GOARCH: "386"},
-	// {GOOS: "freebsd", GOARCH: "amd64", CgoEnabled: true},
-	// {GOOS: "freebsd", GOARCH: "amd64"},
-	// {GOOS: "freebsd", GOARCH: "arm", CgoEnabled: true},
-	// {GOOS: "freebsd", GOARCH: "arm"},
-	// {GOOS: "freebsd", GOARCH: "arm64", CgoEnabled: true},
-	// {GOOS: "freebsd", GOARCH: "arm64"},
-	// {GOOS: "freebsd", GOARCH: "riscv64", CgoEnabled: true},
-	// {GOOS: "freebsd", GOARCH: "riscv64"},
-	// {GOOS: "netbsd", GOARCH: "386", CgoEnabled: true},
-	// {GOOS: "netbsd", GOARCH: "386"},
-	// {GOOS: "netbsd", GOARCH: "amd64", CgoEnabled: true},
-	// {GOOS: "netbsd", GOARCH: "amd64"},
-	// {GOOS: "netbsd", GOARCH: "arm", CgoEnabled: true},
-	// {GOOS: "netbsd", GOARCH: "arm"},
-	// {GOOS: "netbsd", GOARCH: "arm64", CgoEnabled: true},
-	// {GOOS: "netbsd", GOARCH: "arm64"},
-	// {GOOS: "openbsd", GOARCH: "386", CgoEnabled: true},
-	// {GOOS: "openbsd", GOARCH: "386"},
-	// {GOOS: "openbsd", GOARCH: "amd64", CgoEnabled: true},
-	// {GOOS: "openbsd", GOARCH: "amd64"},
-}
-
-func check(root string) {
-	checkFiles, err := filepath.Glob(filepath.Join(root, "api/go1*.txt"))
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	var nextFiles []string
-	if v := runtime.Version(); strings.Contains(v, "devel") || strings.Contains(v, "beta") {
-		next, err := filepath.Glob(filepath.Join(root, "api/next/*.txt"))
-		if err != nil {
-			log.Fatal(err)
-		}
-		nextFiles = next
-	}
-
-	err = filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
-		if err != nil {
-			return err // return error to stop the walking
-		}
-
-		// we ignore internal files and packages
-		if internalPkg.MatchString(path) {
-			return nil
-		}
-		if d.IsDir() {
-			set := token.NewFileSet()
-			packs, err := parser.ParseDir(set, path, filterFiles, 0)
-			if err != nil {
-				log.Fatal("Failed to parse package:", err)
-			}
-
-			// Type checking the packages
-			conf := types.Config{Importer: importer.Default()}
-			for pkgName, pkg := range packs {
-				files := make([]*ast.File, 0, len(pkg.Files))
-
-				// Create the []*ast.File slice from map for type-checking
-				for _, f := range pkg.Files {
-					files = append(files, f)
-				}
-
-				// Type-check the package
-				fmt.Println(pkgName, set, files)
-				pkgTypes, err := conf.Check(pkgName, set, files, nil)
-				if err != nil {
-					log.Fatal("Type checking failed: ", err)
-				}
-				export(pkgTypes)
-			}
-			return nil
-		}
-		return nil
-	})
-	if err != nil {
-		fmt.Printf("Error walking the directory: %v\n", err)
-	}
-
-	bw := bufio.NewWriter(os.Stdout)
-	defer bw.Flush()
-
-	var required []string
-	for _, file := range checkFiles {
-		required = append(required, fileFeatures(file)...)
-	}
-	for _, file := range nextFiles {
-		required = append(required, fileFeatures(file)...)
-	}
-
-	//exception := fileFeatures(filepath.Join(root, "api/except.txt"), false)
-
-	if exitCode == 1 {
-		log.Fatalf("API database problems found")
-	}
-	//	if !compareAPI(bw, features, required, exception) {
-	//		log.Fatalf("API differences found")
-	//	}
 }
 
 func fileFeatures(filename string) []string {
