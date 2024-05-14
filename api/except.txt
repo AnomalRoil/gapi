@@ -1,0 +1,1 @@
+pkg github.com/AnomalRoil/gapi/api, func ExampleMissing()

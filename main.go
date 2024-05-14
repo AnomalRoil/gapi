@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/anomalroil/gapi/api"
+	"github.com/AnomalRoil/gapi/api"
 	"golang.org/x/tools/go/packages"
 )
 
@@ -60,6 +60,8 @@ func main() {
 	//	for _, v := range list {
 	//		fmt.Println(v)
 	//	}
-	api.Check(path, list)
-
+	err = api.Check(path, list)
+	if err != nil {
+		log.Fatal(err)
+	}
 }
