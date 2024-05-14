@@ -11,6 +11,7 @@ import (
 )
 
 var verbose = flag.Bool("verbose", false, "Prints more informations, as well as all encountered APIs")
+var includeInternal = flag.Bool("internal", false, "Include internal packages")
 
 func init() {
 	flag.Usage = func() {
@@ -48,7 +49,7 @@ func main() {
 
 	filtered := pkgs[:0]
 	for _, pkg := range pkgs {
-		if api.IsInternal(pkg.PkgPath) {
+		if !*includeInternal && api.IsInternal(pkg.PkgPath) {
 			if *verbose {
 				log.Println("Skipping internal pkg", pkg)
 			}
