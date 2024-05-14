@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"os"
 
@@ -12,15 +13,23 @@ import (
 var verbose = flag.Bool("verbose", false, "Prints more informations, as well as all encountered APIs")
 
 func init() {
+	flag.Usage = func() {
+		fmt.Fprintf(flag.CommandLine.Output(), "%s [OPTION]... SOURCE\n\nUsage:\n", os.Args[0])
+		flag.PrintDefaults()
+		fmt.Println("Args:")
+		fmt.Println("  SOURCE: the path to the root of your module, e.g. `gapi .` (Required)")
+	}
 	flag.Parse()
 	api.Verbose = *verbose
 }
 
 func main() {
-	if len(os.Args) < 2 {
-		log.Fatal("please provide a path to a Go codebase as argument")
+	path := flag.Arg(0)
+	if len(path) < 1 {
+		flag.Usage()
+		fmt.Println()
+		log.Fatal("Please provide a path to a Go codebase as argument.")
 	}
-	path := os.Args[1]
 	cfg := &packages.Config{
 		Mode:  packages.NeedName | packages.NeedTypes,
 		Dir:   path,
@@ -41,7 +50,7 @@ func main() {
 	for _, pkg := range pkgs {
 		if api.IsInternal(pkg.PkgPath) {
 			if *verbose {
-				log.Println("skipping internal pkg", pkg)
+				log.Println("Skipping internal pkg", pkg)
 			}
 			continue
 		}

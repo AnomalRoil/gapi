@@ -43,6 +43,9 @@ func Check(path string, list []string) error {
 		return err
 	}
 
+	if Verbose {
+		log.Print("Loaded declaration files:", checkFiles)
+	}
 	var required []string
 	for _, file := range checkFiles {
 		required = append(required, fileFeatures(file)...)
@@ -50,11 +53,18 @@ func Check(path string, list []string) error {
 
 	exception := fileFeatures(filepath.Join(path, "api/except.txt"))
 
+	if Verbose {
+		log.Printf("Loaded %d exceptions from api/except.txt file.", len(exception))
+	}
+
 	if exitCode == 1 {
 		return errors.New("API database problems found")
 	}
 	if !compareAPI(list, required, exception) {
 		return errors.New("API differences found")
+	}
+	if Verbose {
+		log.Print("Successful run, no difference with declared APIs detected.")
 	}
 	return nil
 }
