@@ -65,11 +65,7 @@ func main() {
 		},
 		nil)
 
-	list := api.List()
-	//	for _, v := range list {
-	//		fmt.Println(v)
-	//	}
-	err = api.Check(path, list)
+	err = api.Check(path, api.List())
 	if err != nil {
 		log.Fatal(err)
 	}
