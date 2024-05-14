@@ -1,0 +1,2 @@
+pkg github.com/AnomalRoil/gapi/api, func IsInternal(string) bool
+pkg github.com/AnomalRoil/gapi/api, func ExampleMissing()

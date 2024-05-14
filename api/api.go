@@ -43,18 +43,8 @@ func Check(path string, list []string) error {
 		return err
 	}
 
-	var nextFiles []string
-	next, err := filepath.Glob(filepath.Join(path, "api/next/*.txt"))
-	if err != nil {
-		return err
-	}
-	nextFiles = next
-
 	var required []string
 	for _, file := range checkFiles {
-		required = append(required, fileFeatures(file)...)
-	}
-	for _, file := range nextFiles {
 		required = append(required, fileFeatures(file)...)
 	}
 
@@ -96,7 +86,6 @@ func fileFeatures(filename string) []string {
 	// since there is no apifmt to format these files.
 	// The missing final newline is important for the
 	// final release step of cat next/*.txt >go1.X.txt.
-	// If the files don't end in full lines, the concatenation goes awry.
 	if strings.Contains(s, "\r") {
 		log.Printf("%s: contains CRLFs", filename)
 		exitCode = 1
@@ -596,7 +585,7 @@ func compareAPI(features, required, exception []string) (ok bool) {
 			feature := take(&required)
 			if exceptionSet[feature] {
 				// An "unfortunate" case: the feature was once
-				// included in the API (e.g. go1.txt), but was
+				// included in the API (e.g. v1.txt), but was
 				// subsequently removed. These are already
 				// acknowledged by being in the file
 				// "api/except.txt". No need to print them out

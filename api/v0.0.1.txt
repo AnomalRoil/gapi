@@ -1,0 +1,4 @@
+pkg github.com/AnomalRoil/gapi/api, func Check(string, []string) error
+pkg github.com/AnomalRoil/gapi/api, func Export(*types.Package)
+pkg github.com/AnomalRoil/gapi/api, func List() []string
+pkg github.com/AnomalRoil/gapi/api, var Verbose bool
