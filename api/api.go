@@ -22,8 +22,10 @@ import (
 	"strings"
 )
 
-var features map[string]bool
-var Verbose bool
+var (
+	features map[string]bool
+	Verbose  bool
+)
 
 func init() {
 	features = make(map[string]bool)
@@ -80,8 +82,10 @@ func IsInternal(pkg string) bool {
 //  - removed the Walkers and the contexts that allowed to test against multiple archs
 //  - do not attempt to walk through dependencies
 
-var internalPkg = regexp.MustCompile(`(^|/)internal($|/)`)
-var exitCode = 0
+var (
+	internalPkg = regexp.MustCompile(`(^|/)internal($|/)`)
+	exitCode    = 0
+)
 
 func fileFeatures(filename string) []string {
 	bs, err := os.ReadFile(filename)
@@ -517,7 +521,7 @@ var scope []string
 
 // pushScope enters a new scope (walking a package, type, node, etc)
 // and returns a function that will leave the scope (with sanity checking
-// for mismatched pushes & pops)
+// for mismatched pushes & pops).
 func pushScope(name string) (popFunc func()) {
 	scope = append(scope, name)
 	return func() {
