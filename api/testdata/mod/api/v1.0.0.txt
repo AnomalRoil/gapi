@@ -1,0 +1,3 @@
+pkg example.com/mod/p, const Answer = 42
+pkg example.com/mod/p, func Removed()
+pkg example.com/mod/p, func Excepted()
