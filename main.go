@@ -20,14 +20,23 @@ var (
 	includeInternal = flag.Bool("internal", false, "Include internal packages")
 	printAPI        = flag.Bool("print", false, "Print the current API on stdout instead of checking it, e.g. gapi -print . > api/v1.0.0.txt")
 	nextFile        = flag.String("next", "", "Append undeclared new APIs to this `file`, relative to SOURCE (e.g. api/next/feature.txt), instead of failing on them")
+	apiDir          = flag.String("api", defaultAPIDir(), "API folder `dir`, relative to SOURCE; defaults to $GAPI_FOLDER if set")
 )
+
+func defaultAPIDir() string {
+	if dir := os.Getenv("GAPI_FOLDER"); dir != "" {
+		return dir
+	}
+	return "api"
+}
 
 func init() {
 	flag.Usage = func() {
 		_, _ = fmt.Fprintf(flag.CommandLine.Output(), `Usage: %s [OPTION]... [SOURCE]
 
 Checks the public API of the Go module in SOURCE (default ".") against the
-API declared in SOURCE/api/v*.txt, SOURCE/api/next/*.txt and SOURCE/api/except.txt.
+API declared in the API folder (default SOURCE/api): its v*.txt, next/*.txt
+and except.txt files.
 
 Options:
 `, os.Args[0])
@@ -68,31 +77,45 @@ func run(path string) error {
 		return nil
 	}
 
-	if *nextFile == "" {
-		return api.Check(path, features)
-	}
-
-	added, removed, err := api.Diff(path, features)
+	added, removed, err := api.Diff(underSource(path, *apiDir), features)
 	if err != nil {
 		return err
 	}
-	if len(added) > 0 {
-		file := *nextFile
-		if !filepath.IsAbs(file) {
-			file = filepath.Join(path, file)
-		}
+	if *nextFile != "" && len(added) > 0 {
+		file := underSource(path, *nextFile)
 		if err := appendLines(file, added); err != nil {
 			return err
 		}
 		log.Printf("Declared %d new APIs in %s", len(added), file)
+		added = nil
 	}
+
 	for _, f := range removed {
 		fmt.Printf("-%s\n", f)
 	}
-	if len(removed) > 0 {
+	for _, f := range added {
+		fmt.Printf("+%s\n", f)
+	}
+	switch {
+	case len(removed) > 0 && len(added) > 0:
+		return fmt.Errorf("API differences found: %d removed (-), %d undeclared (+)", len(removed), len(added))
+	case len(removed) > 0:
 		return fmt.Errorf("API differences found: %d removed (-)", len(removed))
+	case len(added) > 0:
+		return fmt.Errorf("API differences found: %d undeclared (+)", len(added))
+	}
+	if *verbose {
+		log.Print("Successful run, no difference with declared APIs detected.")
 	}
 	return nil
+}
+
+// underSource resolves file relative to the SOURCE path, unless it is absolute.
+func underSource(path, file string) string {
+	if filepath.IsAbs(file) {
+		return file
+	}
+	return filepath.Join(path, file)
 }
 
 // load type-checks all the packages of the module in path and records their API.

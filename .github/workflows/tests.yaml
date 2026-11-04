@@ -38,4 +38,4 @@ jobs:
           go-version: 'stable'
       - name: Check breakage in public APIs
         # Run gapi from this commit on itself.
-        run: go run . .
+        run: go run . -api .github/api .

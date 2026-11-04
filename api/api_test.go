@@ -73,7 +73,7 @@ func TestExport(t *testing.T) {
 }
 
 func TestDiff(t *testing.T) {
-	added, removed, err := Diff(testMod, loadTestMod(t))
+	added, removed, err := Diff(filepath.Join(testMod, "api"), loadTestMod(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -138,7 +138,7 @@ func TestDeclaredBadFile(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "api", "v1.txt"), []byte("a"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := Diff(dir, []string{"a"}); err == nil {
+	if _, _, err := Diff(filepath.Join(dir, "api"), []string{"a"}); err == nil {
 		t.Fatal("expected error on malformed API file")
 	}
 }
