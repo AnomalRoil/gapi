@@ -39,10 +39,19 @@ func List() (fs []string) {
 	return
 }
 
-func Check(path string, list []string) error {
-	checkFiles, err := filepath.Glob(filepath.Join(path, "api/v*.txt"))
+func Check(path string, list []string, useNext bool) error {
+	checkFiles, err := filepath.Glob(filepath.Join(path, "v*.txt"))
 	if err != nil {
 		return err
+	}
+
+	var nextFiles []string
+	if useNext {
+		next, err := filepath.Glob(filepath.Join(path, "next/*.txt"))
+		if err != nil {
+			return err
+		}
+		nextFiles = next
 	}
 
 	if Verbose {
@@ -52,8 +61,11 @@ func Check(path string, list []string) error {
 	for _, file := range checkFiles {
 		required = append(required, fileFeatures(file)...)
 	}
+	for _, file := range nextFiles {
+		required = append(required, fileFeatures(file)...)
+	}
 
-	exception := fileFeatures(filepath.Join(path, "api/except.txt"))
+	exception := fileFeatures(filepath.Join(path, "except.txt"))
 
 	if Verbose {
 		log.Printf("Loaded %d exceptions from api/except.txt file.", len(exception))

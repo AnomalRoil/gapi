@@ -1,6 +1,7 @@
 # GAPI: Go APIs
 
 The goal of GAPI is to allow you to list and compare the public APIs in your Go codebase easily.
+It is based on the way the Go project itself [does it](https://github.com/golang/go/blob/e30e65f7a8bda0351d9def5a6bc91471bddafd3d/src/cmd/api/api_test.go) to ensure it has a stable API.
 
 Usage:
 ```
@@ -10,6 +11,8 @@ gapi path/to/source
 
 You can specify your current APIs in your `api` folder in files named `v*.txt` (e.g. `api/v1.0.1.txt api/v1.2.3.txt`),
 you can specify also exceptions for features that were removed in `api/except.txt`.
+
+If you want to specify another "base directory", e.g. `.github/api`, you can do it by specifying the `GAPI_FOLDER` env variable, otherwise it'll default to the specified `path/to/source/api` folder.
 
 ## Github Action
 
@@ -33,6 +36,8 @@ jobs:
         with:
           go-version: '1.22'
       - name: Check breakage in public APIs
+        env:
+          GAPI_FOLDER=".github/api"
         run: |
           go install github.com/AnomalRoil/gapi@latest
           gapi .

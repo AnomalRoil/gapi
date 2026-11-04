@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path"
 
 	"github.com/AnomalRoil/gapi/api"
 	"golang.org/x/tools/go/packages"
@@ -12,6 +13,7 @@ import (
 
 var verbose = flag.Bool("verbose", false, "Prints more informations, as well as all encountered APIs")
 var includeInternal = flag.Bool("internal", false, "Include internal packages")
+var next = flag.Bool("next", false, "Uses the new APIs in the api/next folder rather")
 
 func init() {
 	flag.Usage = func() {
@@ -25,15 +27,19 @@ func init() {
 }
 
 func main() {
-	path := flag.Arg(0)
-	if len(path) < 1 {
+	target := flag.Arg(0)
+	if len(target) < 1 {
 		flag.Usage()
 		fmt.Println()
 		log.Fatal("Please provide a path to a Go codebase as argument.")
 	}
+	apiBaseFolder := path.Join(target, "api")
+	if newPath, ok := os.LookupEnv("GAPI_FOLDER"); ok {
+		apiBaseFolder = newPath
+	}
 	cfg := &packages.Config{
 		Mode:  packages.NeedName | packages.NeedTypes,
-		Dir:   path,
+		Dir:   target,
 		Tests: false, // Set to true if test files should be included
 	}
 
@@ -66,7 +72,7 @@ func main() {
 		},
 		nil)
 
-	err = api.Check(path, api.List())
+	err = api.Check(apiBaseFolder, api.List(), *next)
 	if err != nil {
 		log.Fatal(err)
 	}
