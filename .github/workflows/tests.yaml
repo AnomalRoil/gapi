@@ -10,28 +10,20 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Install Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.22'
-      - name: Build
-        run: go build
-
   tests:
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    strategy:
+      matrix:
+        go: ['oldstable', 'stable']
     steps:
       - name: Checkout
         uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
+          go-version: ${{ matrix.go }}
+      - name: Build
+        run: go build ./...
       - name: Unit tests
         run: go test ./...
 
@@ -43,8 +35,7 @@ jobs:
         uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
-      - name: Unit tests
-        run: |
-          go install github.com/AnomalRoil/gapi@latest
-          gapi .
+          go-version: 'stable'
+      - name: Check breakage in public APIs
+        # Run gapi from this commit on itself.
+        run: go run . .
