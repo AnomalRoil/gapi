@@ -3,11 +3,12 @@
 // license that can be found in the LICENSE file.
 
 // Package api computes the exported API of a set of Go packages and compares
-// it against the API declared in an "api" folder, the same way the Go project
-// guards its own compatibility promise.
+// it against the API declared in an API folder, the same way the Go project
+// guards its own compatibility promise (see
+// https://github.com/golang/go/tree/master/src/cmd/api).
 //
-// Declared API files live in DIR/api:
-//   - v*.txt: the API of released versions (e.g. api/v1.2.0.txt),
+// An API folder (by default "api" at the root of the module) contains:
+//   - v*.txt: the API of released versions (e.g. v1.2.0.txt),
 //   - next/*.txt: new APIs accepted for the upcoming release,
 //   - except.txt: features that were removed or changed on purpose.
 //
@@ -44,11 +45,11 @@ func List() (fs []string) {
 	return
 }
 
-// Diff compares the given features against the API declared in path/api.
-// It returns the features that are not declared yet (added) and the declared
-// features that are missing and not listed in api/except.txt (removed).
-func Diff(path string, list []string) (added, removed []string, err error) {
-	required, exception, err := declared(path)
+// Diff compares the given features against the API declared in the API
+// folder dir. It returns the features that are not declared yet (added) and
+// the declared features that are missing and not listed in except.txt (removed).
+func Diff(dir string, list []string) (added, removed []string, err error) {
+	required, exception, err := declared(dir)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -59,8 +60,9 @@ func Diff(path string, list []string) (added, removed []string, err error) {
 // Check compares the given features against the API declared in path/api.
 // It prints the differences on stdout, removed features prefixed by "-" and
 // undeclared new features prefixed by "+", and returns an error if any.
+// Use Diff for an API folder in another location.
 func Check(path string, list []string) error {
-	added, removed, err := Diff(path, list)
+	added, removed, err := Diff(filepath.Join(path, "api"), list)
 	if err != nil {
 		return err
 	}
@@ -91,12 +93,12 @@ func IsInternal(pkg string) bool {
 
 var internalPkg = regexp.MustCompile(`(^|/)internal($|/)`)
 
-// declared loads the required features (api/v*.txt and api/next/*.txt) and
-// the exceptions (api/except.txt) found under path.
-func declared(path string) (required, exception []string, err error) {
+// declared loads the required features (v*.txt and next/*.txt) and the
+// exceptions (except.txt) found in the API folder dir.
+func declared(dir string) (required, exception []string, err error) {
 	var files []string
-	for _, pattern := range []string{"api/v*.txt", "api/next/*.txt"} {
-		m, err := filepath.Glob(filepath.Join(path, pattern))
+	for _, pattern := range []string{"v*.txt", "next/*.txt"} {
+		m, err := filepath.Glob(filepath.Join(dir, pattern))
 		if err != nil {
 			return nil, nil, err
 		}
@@ -112,7 +114,8 @@ func declared(path string) (required, exception []string, err error) {
 		errs = append(errs, err)
 		required = append(required, fs...)
 	}
-	exception, err = fileFeatures(filepath.Join(path, "api", "except.txt"))
+	exceptFile := filepath.Join(dir, "except.txt")
+	exception, err = fileFeatures(exceptFile)
 	if errors.Is(err, os.ErrNotExist) {
 		err = nil
 	}
@@ -121,7 +124,7 @@ func declared(path string) (required, exception []string, err error) {
 		return nil, nil, fmt.Errorf("API database problems found:\n%w", err)
 	}
 	if Verbose {
-		log.Printf("Loaded %d exceptions from api/except.txt file.", len(exception))
+		log.Printf("Loaded %d exceptions from %s", len(exception), exceptFile)
 	}
 	return required, exception, nil
 }
@@ -620,7 +623,7 @@ func compareAPI(features, required, exception []string) (added, removed []string
 	for f := range requiredSet {
 		if !featureSet[f] && !exceptionSet[f] {
 			// The feature was declared but is gone: compatibility broken,
-			// unless acknowledged in api/except.txt.
+			// unless acknowledged in except.txt.
 			removed = append(removed, f)
 		}
 	}

@@ -2,7 +2,7 @@
 
 GAPI lists the public API of your Go module and checks it against the API you declared,
 so that every API change is visible and deliberate. It reuses the approach (and the file format)
-of the Go project's own `cmd/api` checker, which guards the Go 1 compatibility promise.
+of the Go project's own [`cmd/api`](https://github.com/golang/go/tree/master/src/cmd/api) checker, which guards the Go 1 compatibility promise.
 
 ```
 go install github.com/AnomalRoil/gapi@latest
@@ -37,6 +37,9 @@ The check fails when:
 
 Lines starting with `#` are comments.
 
+To keep these files elsewhere, e.g. when your module has its own `api` Go package, use
+`-api .github/api` or set `GAPI_FOLDER=.github/api`. The path is relative to `SOURCE`.
+
 ## Workflow
 
 1. Add a new API: run `gapi -next api/next/my-feature.txt .` to declare it, and commit that file
@@ -54,6 +57,7 @@ cat api/next/*.txt | sort > api/vX.Y.Z.txt && rm api/next/*.txt
 gapi [OPTION]... [SOURCE]      # SOURCE defaults to "."
   -print        print the current API instead of checking it
   -next FILE    append undeclared new APIs to FILE instead of failing on them
+  -api DIR      API folder, relative to SOURCE (default $GAPI_FOLDER, else "api")
   -internal     include internal packages
   -verbose      print loaded files, packages and features
 ```
