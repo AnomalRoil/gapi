@@ -21,4 +21,6 @@ jobs:
     - name: golangci-lint
       uses: golangci/golangci-lint-action@v8
       with:
-        version: v2.6.0
+        version: v2.15.0
+        # Build it with the runner's Go, so it can type-check that Go version.
+        install-mode: goinstall

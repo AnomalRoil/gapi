@@ -81,8 +81,8 @@ jobs:
         run: go run github.com/AnomalRoil/gapi@latest .
 ```
 
-Use a recent `gapi`: it must be built with a `golang.org/x/tools` version that can read the
-export data of your Go toolchain. If loading fails, `gapi` stops instead of reporting bogus differences.
+`gapi` type-checks your module and its dependencies from source, so it does not depend on the
+export data format of your Go toolchain. If loading fails, `gapi` stops instead of reporting bogus differences.
 
 ## Differences with Go's `cmd/api`
 

@@ -98,7 +98,10 @@ func run(path string) error {
 // load type-checks all the packages of the module in path and records their API.
 func load(path string) error {
 	cfg := &packages.Config{
-		Mode:  packages.NeedName | packages.NeedTypes,
+		// Type-check everything from source (NeedDeps) instead of reading the
+		// compiler's export data, whose format changes with Go releases and
+		// would require a newer golang.org/x/tools to decode.
+		Mode:  packages.NeedName | packages.NeedTypes | packages.NeedSyntax | packages.NeedImports | packages.NeedDeps,
 		Dir:   path,
 		Tests: false,
 	}

@@ -18,7 +18,8 @@ func loadTestMod(t *testing.T) []string {
 	features = make(map[string]bool)
 	t.Cleanup(func() { features = make(map[string]bool) })
 
-	cfg := &packages.Config{Mode: packages.NeedName | packages.NeedTypes, Dir: testMod}
+	// Same mode as gapi: type-check from source, see main.go.
+	cfg := &packages.Config{Mode: packages.NeedName | packages.NeedTypes | packages.NeedSyntax | packages.NeedImports | packages.NeedDeps, Dir: testMod}
 	pkgs, err := packages.Load(cfg, "./...")
 	if err != nil {
 		t.Fatal(err)
